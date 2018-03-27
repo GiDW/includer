@@ -203,5 +203,15 @@ $RECYCLE.BIN/
 
 ## Project
 
+.idea
+.vscode
+
+.editorconfig
+.eslint-base.json
+.eslintrc.json
+.nvmrc
+
+*.zip
+*.tgz
+
 test
-test.js

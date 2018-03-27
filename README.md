@@ -1,2 +1,5 @@
-# includer
-Include files in other files
+# Includer
+
+## Usage
+
+`includer [input] -o [output]`
