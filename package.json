@@ -5,7 +5,7 @@
   "author": "Gilles De Waele",
   "license": "MIT",
   "bin": {
-    "includer": "./bin/includer.js"
+    "includer": "index.js"
   },
   "keywords": [
     "include",
