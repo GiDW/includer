@@ -17,10 +17,10 @@
     "text"
   ],
   "dependencies": {
-    "commander": "2.15.1"
+    "commander": "2.16.0"
   },
   "devDependencies": {
-    "eslint": "4.19.1"
+    "standard": "11.0.1"
   },
   "repository": "github:GiDW/includer.git",
   "bugs": {

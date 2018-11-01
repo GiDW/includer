@@ -1,372 +1,314 @@
 #!/usr/bin/env node
 
-'use strict';
+'use strict'
 
-var fs = require('fs');
+var fs = require('fs')
 
-var program = require('commander');
+var program = require('commander')
 
 // Replace /* ##include('PATH_TO_FILE')## */
 // 21 essentials characters
 // PATH_TO_FILE variable
 
-var INC_1_PREFIX = Buffer.from('/* ##include(\'');
-var INC_1_SUFFIX = Buffer.from('\')## */');
+var INC_1_PREFIX = Buffer.from('/* ##include(\'')
+var INC_1_SUFFIX = Buffer.from('\')## */')
 
-var INC_1_PREFIX_L = INC_1_PREFIX.length;
-var INC_1_SUFFIX_L = INC_1_SUFFIX.length;
-var INC_1_ABS_MIN = INC_1_PREFIX_L + INC_1_SUFFIX_L;
+var INC_1_PREFIX_L = INC_1_PREFIX.length
+var INC_1_SUFFIX_L = INC_1_SUFFIX.length
+var INC_1_ABS_MIN = INC_1_PREFIX_L + INC_1_SUFFIX_L
 
 program
-    .arguments('<input>')
-    .option('-o, --output <output>', 'output file path')
-    .option('-v, --verbose', 'verbosity')
-    .action(action)
-    .parse(process.argv);
+  .arguments('<input>')
+  .option('-o, --output <output>', 'output file path')
+  .option('-w, --working-dir <path>', 'different working directory')
+  .option('-v, --verbose', 'verbosity')
+  .action(action)
+  .parse(process.argv)
 
 function action (input, prog) {
-
-    if (prog.output) {
-
-        includer(
-            input,
-            prog.output,
-            {
-                verbose: prog.verbose
-            }
-        );
-    }
+  if (prog.output) {
+    includer(
+      input,
+      prog.output,
+      {
+        verbose: prog.verbose
+      }
+    )
+  }
 }
 
 function includer (input, output, options) {
+  var inStream, outStream
+  var outError, outReady, endReached
+  var potentialInclude
 
-    var inStream, outStream;
-    var outError, outReady, endReached;
-    var potentialInclude;
+  var verbose = false
 
-    var verbose = false;
+  if (options) {
+    verbose = options.verbose
+  }
 
-    if (options) {
+  outError = null
+  outReady = false
 
-        verbose = options.verbose;
+  endReached = false
+
+  potentialInclude = null
+
+  inStream = fs.createReadStream(input)
+  outStream = fs.createWriteStream(output)
+
+  inStream.on('error', onInError)
+  inStream.on('end', onInEnd)
+  inStream.once('readable', onInReadable)
+
+  outStream.on('error', onOutError)
+  outStream.on('close', onOutClose)
+  outStream.on('finish', onOutFinish)
+  outStream.on('drain', onOutDrain)
+  outStream.on('open', onOutOpen)
+
+  function onInError (error) {
+    console.error('In stream error', error)
+  }
+
+  function onInEnd () {
+    if (verbose) console.log('In end')
+
+    endReached = true
+  }
+
+  function onInReadable () {
+    if (verbose) console.log('In readable')
+
+    readChunk()
+  }
+
+  function onOutError (error) {
+    console.error('Out stream error', error)
+
+    outError = error
+  }
+
+  function onOutClose () {
+    if (verbose) console.log('Out closed')
+  }
+
+  function onOutFinish () {
+    if (verbose) console.log('Out finish')
+  }
+
+  function onOutDrain () {
+    if (verbose) console.log('Out drain')
+  }
+
+  function onOutOpen () {
+    if (verbose) console.log('Out opened')
+
+    outReady = true
+  }
+
+  function readChunk () {
+    var chunk, includes
+
+    if (!endReached) {
+      chunk = inStream.read()
+
+      if (chunk) {
+        includes = []
+
+        lookForIncludeCssJs(chunk, includes)
+
+        processIncludes(chunk, includes, onProcessingIncludes)
+      }
+    }
+  }
+
+  function onProcessingIncludes () {
+    if (verbose) console.log('Processing includes finished')
+  }
+
+  function writeChunk (chunk, callback) {
+    if (verbose) console.log('Write chunk')
+
+    if (outError) {
+      callback(outError, null)
+    } else if (outReady) {
+      _writeChunk()
+    } else {
+      if (verbose) console.error('Output not ready yet')
+
+      outStream.once('open', _writeChunk)
     }
 
-    outError = null;
-    outReady = false;
+    function _writeChunk () {
+      var cb = callback.bind(null, null, true)
 
-    endReached = false;
-
-    potentialInclude = null;
-
-    inStream = fs.createReadStream(input);
-    outStream = fs.createWriteStream(output);
-
-    inStream.on('error', onInError);
-    inStream.on('end', onInEnd);
-    inStream.once('readable', onInReadable);
-
-    outStream.on('error', onOutError);
-    outStream.on('close', onOutClose);
-    outStream.on('finish', onOutFinish);
-    outStream.on('drain', onOutDrain);
-    outStream.on('open', onOutOpen);
-
-    function onInError (error) {
-
-        console.error('In stream error', error);
+      if (!outStream.write(chunk)) {
+        outStream.once('drain', cb)
+      } else {
+        process.nextTick(cb)
+      }
     }
+  }
 
-    function onInEnd () {
+  function lookForIncludeCssJs (buffer, includes) {
+    var idx, length, contentIdx, subBuffer, endIdx
 
-        if (verbose) console.log('In end');
+    length = buffer.length
+    idx = buffer.indexOf('/', 0)
 
-        endReached = true;
-    }
+    while (idx !== -1) {
+      // Check location
+      if (idx + INC_1_ABS_MIN < length) {
+        // Check for potential include statement
 
-    function onInReadable () {
+        contentIdx = idx + INC_1_PREFIX_L
 
-        if (verbose) console.log('In readable');
+        subBuffer = buffer.slice(idx, contentIdx)
 
-        readChunk();
-    }
+        if (subBuffer.equals(INC_1_PREFIX)) {
+          // Possible match
 
-    function onOutError (error) {
+          endIdx = buffer.indexOf(INC_1_SUFFIX, contentIdx)
 
-        console.error('Out stream error', error);
+          if (endIdx !== -1) {
+            subBuffer = buffer.slice(contentIdx, endIdx)
 
-        outError = error;
-    }
+            includes.push({
+              startIndex: idx,
+              endIndex: endIdx + INC_1_SUFFIX_L,
+              content: subBuffer
+            })
 
-    function onOutClose () {
+            idx = endIdx + INC_1_SUFFIX_L
+          } else {
+            // TODO Check for partial include
+            // Store info under potential include
 
-        if (verbose) console.log('Out closed');
-    }
-
-    function onOutFinish () {
-
-        if (verbose) console.log('Out finish');
-    }
-
-    function onOutDrain () {
-
-        if (verbose) console.log('Out drain');
-    }
-
-    function onOutOpen () {
-
-        if (verbose) console.log('Out opened');
-
-        outReady = true;
-    }
-
-    function readChunk () {
-
-        var chunk, includes;
-
-        if (!endReached) {
-
-            chunk = inStream.read();
-
-            if (chunk) {
-
-                includes = [];
-
-                lookForIncludeCssJs(chunk, includes);
-
-                processIncludes(chunk, includes, onProcessingIncludes);
-            }
-        }
-    }
-
-    function onProcessingIncludes () {
-
-        if (verbose) console.log('Processing includes finished');
-    }
-
-    function writeChunk (chunk, callback) {
-
-        if (verbose) console.log('Write chunk');
-
-        if (outError) {
-
-            callback(outError, null);
-
-        } else if (outReady) {
-
-            _writeChunk();
-
+            idx = contentIdx
+          }
         } else {
-
-            if (verbose) console.error('Output not ready yet');
-
-            outStream.once('open', _writeChunk);
+          idx++
         }
-
-        function _writeChunk () {
-
-            var cb = callback.bind(null, null, true);
-
-            if (!outStream.write(chunk)) {
-
-                outStream.once('drain', cb);
-
-            } else {
-
-                process.nextTick(cb);
-            }
-        }
-    }
-
-    function lookForIncludeCssJs (buffer, includes) {
-
-        var idx, length, contentIdx, subBuffer, endIdx;
-
-        length = buffer.length;
-        idx = buffer.indexOf('/', 0);
-
-        while (idx !== -1) {
-
-            // Check location
-            if (idx + INC_1_ABS_MIN < length) {
-
-                // Check for potential include statement
-
-                contentIdx = idx + INC_1_PREFIX_L;
-
-                subBuffer = buffer.slice(idx, contentIdx);
-
-                if (subBuffer.equals(INC_1_PREFIX)) {
-
-                    // Possible match
-
-                    endIdx = buffer.indexOf(INC_1_SUFFIX, contentIdx);
-
-                    if (endIdx !== -1) {
-
-                        subBuffer = buffer.slice(contentIdx, endIdx);
-
-                        includes.push({
-                            startIndex: idx,
-                            endIndex: endIdx + INC_1_SUFFIX_L,
-                            content: subBuffer
-                        });
-
-                        idx = endIdx + INC_1_SUFFIX_L;
-
-                    } else {
-
-                        // TODO Check for partial include
-                        // Store info under potential include
-
-                        idx = contentIdx;
-                    }
-
-                } else {
-
-                    idx++;
-                }
-
-            } else {
-
-                if (endReached) {
-
-                    idx = -1;
-
-                } else {
-
-                    // TODO Check for partial include
-                    // Store info under potential include
-
-                    idx = -1;
-                }
-            }
-
-            if (idx !== -1) idx = buffer.indexOf('/', idx);
-        }
-    }
-
-    function processIncludes (buffer, includes, callback) {
-
-        var i, length, prevEndIdx, cbCalled;
-
-        cbCalled = false;
-
-        length = includes.length;
-
-        if (length > 0) {
-
-            prevEndIdx = 0;
-
-            i = 0;
-
-            writeInclude(buffer, prevEndIdx, includes[i], onProcessing);
-
+      } else {
+        if (endReached) {
+          idx = -1
         } else {
+          // TODO Check for partial include
+          // Store info under potential include
 
-            writeChunk(buffer, _callback);
+          idx = -1
         }
+      }
 
-        function onProcessing () {
+      if (idx !== -1) idx = buffer.indexOf('/', idx)
+    }
+  }
 
-            var workingBuffer;
+  function processIncludes (buffer, includes, callback) {
+    var i, length, prevEndIdx, cbCalled
 
-            if (verbose) console.log('Processed');
+    cbCalled = false
 
-            if (includes[i]) {
+    length = includes.length
 
-                prevEndIdx = includes[i].endIndex;
+    if (length > 0) {
+      prevEndIdx = 0
 
-                i++;
+      i = 0
 
-                if (i < length) {
-
-                    writeInclude(
-                        buffer,
-                        prevEndIdx,
-                        includes[i],
-                        onProcessing
-                    );
-
-                } else {
-
-                    workingBuffer = buffer.slice(
-                        prevEndIdx,
-                        buffer.length
-                    );
-
-                    writeChunk(workingBuffer, _callback);
-                }
-            }
-        }
-
-        function _callback (error, result) {
-
-            if (!cbCalled && typeof callback === 'function') {
-
-                callback(error, result);
-            }
-        }
+      writeInclude(buffer, prevEndIdx, includes[i], onProcessing)
+    } else {
+      writeChunk(buffer, _callback)
     }
 
-    function writeInclude (buffer, bufferStart, include, callback) {
+    function onProcessing () {
+      var workingBuffer
 
-        writeChunk(
-            buffer.slice(
-                bufferStart,
-                include.startIndex
-            ),
-            onWriteChunk
-        );
+      if (verbose) console.log('Processed')
 
-        function onWriteChunk () {
+      if (includes[i]) {
+        prevEndIdx = includes[i].endIndex
 
-            writeFile(include.content, onWriteFile);
+        i++
+
+        if (i < length) {
+          writeInclude(
+            buffer,
+            prevEndIdx,
+            includes[i],
+            onProcessing
+          )
+        } else {
+          workingBuffer = buffer.slice(
+            prevEndIdx,
+            buffer.length
+          )
+
+          writeChunk(workingBuffer, _callback)
         }
-
-        function onWriteFile (error, result) {
-
-            callback(error, result);
-        }
+      }
     }
 
-    function writeFile (file, callback) {
+    function _callback (error, result) {
+      if (!cbCalled && typeof callback === 'function') {
+        callback(error, result)
+      }
+    }
+  }
 
-        var cbCalled, fileStream;
+  function writeInclude (buffer, bufferStart, include, callback) {
+    writeChunk(
+      buffer.slice(
+        bufferStart,
+        include.startIndex
+      ),
+      onWriteChunk
+    )
 
-        cbCalled = false;
+    function onWriteChunk () {
+      writeFile(include.content, onWriteFile)
+    }
 
-        fileStream = fs.createReadStream(file);
+    function onWriteFile (error, result) {
+      callback(error, result)
+    }
+  }
 
-        fileStream.once('error', onFileError);
-        fileStream.once('end', onFileEnd);
+  function writeFile (file, callback) {
+    var cbCalled, fileStream
 
-        fileStream.pipe(outStream, {end: false});
+    cbCalled = false
 
-        function onFileError (error) {
+    fileStream = fs.createReadStream(file)
 
-            console.error('File include error', file, error);
+    fileStream.once('error', onFileError)
+    fileStream.once('end', onFileEnd)
 
-            _callback(error);
-        }
+    fileStream.pipe(outStream, {end: false})
 
-        function onFileEnd () {
+    function onFileError (error) {
+      console.error('File include error', file, error)
 
-            if (verbose) console.log('File end');
+      _callback(error)
+    }
 
-            _callback(null, true);
-        }
+    function onFileEnd () {
+      if (verbose) console.log('File end')
 
-        function _callback (error, result) {
+      _callback(null, true)
+    }
 
-            if (cbCalled === false &&
+    function _callback (error, result) {
+      if (cbCalled === false &&
                 typeof callback === 'function') {
+        cbCalled = true
 
-                cbCalled = true;
+        fileStream.removeAllListeners()
 
-                fileStream.removeAllListeners();
-
-                callback(error, result);
-            }
-        }
+        callback(error, result)
+      }
     }
+  }
 }
