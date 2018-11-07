@@ -7,7 +7,7 @@ var fs = require('fs')
 var program = require('commander')
 
 // Replace /* ##include('PATH_TO_FILE')## */
-// 21 essentials characters
+// 21 essential characters
 // PATH_TO_FILE variable
 
 var INC_1_PREFIX = Buffer.from('/* ##include(\'')
@@ -73,13 +73,13 @@ function includer (input, output, options) {
   }
 
   function onInEnd () {
-    if (verbose) console.log('In end')
+    _log('In end')
 
     endReached = true
   }
 
   function onInReadable () {
-    if (verbose) console.log('In readable')
+    _log('In readable')
 
     readChunk()
   }
@@ -91,19 +91,19 @@ function includer (input, output, options) {
   }
 
   function onOutClose () {
-    if (verbose) console.log('Out closed')
+    _log('Out closed')
   }
 
   function onOutFinish () {
-    if (verbose) console.log('Out finish')
+    _log('Out finish')
   }
 
   function onOutDrain () {
-    if (verbose) console.log('Out drain')
+    _log('Out drain')
   }
 
   function onOutOpen () {
-    if (verbose) console.log('Out opened')
+    _log('Out opened')
 
     outReady = true
   }
@@ -125,18 +125,18 @@ function includer (input, output, options) {
   }
 
   function onProcessingIncludes () {
-    if (verbose) console.log('Processing includes finished')
+    _log('Processing includes finished')
   }
 
   function writeChunk (chunk, callback) {
-    if (verbose) console.log('Write chunk')
+    _log('Write chunk')
 
     if (outError) {
       callback(outError, null)
     } else if (outReady) {
       _writeChunk()
     } else {
-      if (verbose) console.error('Output not ready yet')
+      _log('Output not ready yet')
 
       outStream.once('open', _writeChunk)
     }
@@ -226,7 +226,7 @@ function includer (input, output, options) {
     function onProcessing () {
       var workingBuffer
 
-      if (verbose) console.log('Processed')
+      _log('Processed')
 
       if (includes[i]) {
         prevEndIdx = includes[i].endIndex
@@ -286,7 +286,7 @@ function includer (input, output, options) {
     fileStream.once('error', onFileError)
     fileStream.once('end', onFileEnd)
 
-    fileStream.pipe(outStream, {end: false})
+    fileStream.pipe(outStream, { end: false })
 
     function onFileError (error) {
       console.error('File include error', file, error)
@@ -295,8 +295,7 @@ function includer (input, output, options) {
     }
 
     function onFileEnd () {
-      if (verbose) console.log('File end')
-
+      _log('File end')
       _callback(null, true)
     }
 
@@ -310,5 +309,9 @@ function includer (input, output, options) {
         callback(error, result)
       }
     }
+  }
+
+  function _log () {
+    if (verbose) console.log.apply(console, arguments)
   }
 }
