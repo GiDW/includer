@@ -2,7 +2,7 @@
 
 var fs = require('fs')
 
-var IncludePattern = require('./include_pattern')
+var IncludePattern = require('./include_pattern.js')
 
 var includeCssJs = new IncludePattern(
   '/* ##include(\'',

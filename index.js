@@ -4,7 +4,7 @@
 
 var program = require('commander')
 
-var includer = require('src/includer.js')
+var includer = require('./src/includer.js')
 
 program
   .arguments('<input>')
