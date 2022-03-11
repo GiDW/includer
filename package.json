@@ -19,10 +19,13 @@
     "text"
   ],
   "dependencies": {
-    "commander": "2.19.0"
+    "commander": "9.0.0"
   },
   "devDependencies": {
-    "standard": "12.0.1"
+    "@gidw/eslint-config-standard-node": "1.0.3",
+    "eslint": "^8.10.0",
+    "eslint-plugin-import": "^2.25.4",
+    "eslint-plugin-node": "^11.1.0"
   },
   "repository": "github:GiDW/includer.git",
   "bugs": {
