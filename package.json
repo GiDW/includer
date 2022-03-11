@@ -32,5 +32,7 @@
     "url": "https://github.com/GiDW/includer/issues",
     "email": "de.waele.gilles@gmail.com"
   },
-  "scripts": {}
+  "scripts": {
+    "lint": "eslint --no-error-on-unmatched-pattern --ext .js,.cjs,.mjs,.ts,.cts,.mts,.jsx,.tsx ."
+  }
 }

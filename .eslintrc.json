@@ -1,9 +1,0 @@
-{
-  "parserOptions": {
-    "ecmaVersion": 5
-  },
-  "env": {
-    "node": true
-  },
-  "extends": "standard"
-}
