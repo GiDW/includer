@@ -13,13 +13,11 @@ program
   .parse(process.argv)
 
 function action (input, prog) {
-  if (prog.output) {
-    includer(
-      input,
-      prog.output,
-      {
-        verbose: prog.verbose
-      }
-    )
-  }
+  includer(
+    input,
+    prog.output,
+    {
+      verbose: prog.verbose
+    }
+  )
 }

@@ -1,6 +1,7 @@
 'use strict'
 
 var fs = require('fs')
+var stream = require('stream')
 
 var IncludePattern = require('./include_pattern.js')
 
@@ -24,6 +25,12 @@ var INC_1_PREFIX_L = INC_1_PREFIX.length
 var INC_1_SUFFIX_L = INC_1_SUFFIX.length
 var INC_1_ABS_MIN = INC_1_PREFIX_L + INC_1_SUFFIX_L
 
+var includerTransform = new stream.Transform({
+  transform: function (chunk, encoding, callback) {
+    
+  }
+})
+
 function includer (input, output, options) {
   var inStream, outStream
   var outError, outReady, endReached
@@ -43,17 +50,30 @@ function includer (input, output, options) {
   potentialInclude = null
 
   inStream = fs.createReadStream(input)
-  outStream = fs.createWriteStream(output)
+  // outStream = fs.createWriteStream(output)
 
-  inStream.on('error', onInError)
-  inStream.on('end', onInEnd)
-  inStream.once('readable', onInReadable)
+  inStream.on('error', function (error) {
+    console.log('inStream ERROR', error)
+  })
+  inStream.on('end', function (arg) {
+    console.log('inStream end', arg)
+  })
+  inStream.on('close', function (arg) {
+    console.log('inStream close', arg)
+  })
+  inStream.on('data', function (data) {
+    console.log('inStream data', data.length)
+  })
 
-  outStream.on('error', onOutError)
-  outStream.on('close', onOutClose)
-  outStream.on('finish', onOutFinish)
-  outStream.on('drain', onOutDrain)
-  outStream.on('open', onOutOpen)
+  // inStream.on('error', onInError)
+  // inStream.on('end', onInEnd)
+  // inStream.once('readable', onInReadable)
+
+  // outStream.on('error', onOutError)
+  // outStream.on('close', onOutClose)
+  // outStream.on('finish', onOutFinish)
+  // outStream.on('drain', onOutDrain)
+  // outStream.on('open', onOutOpen)
 
   function onInError (error) {
     console.error('In stream error', error)
