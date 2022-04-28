@@ -1,22 +1,13 @@
 'use strict'
 
 var fs = require('fs')
-var stream = require('stream')
-
-var IncludePattern = require('./include_pattern.js')
-
-var includeCssJs = new IncludePattern(
-  '/* ##include(\'',
-  '\')## */'
-)
-var includeHtml = new IncludePattern(
-  '<!-- ##include(\'',
-  '\')## -->'
-)
 
 // Replace /* ##include('PATH_TO_FILE')## */
 // 21 essential characters
 // PATH_TO_FILE variable
+
+// INC 1
+// /* ##include('PATH_TO_FILE')## */
 
 var INC_1_PREFIX = Buffer.from('/* ##include(\'')
 var INC_1_SUFFIX = Buffer.from('\')## */')
@@ -25,11 +16,15 @@ var INC_1_PREFIX_L = INC_1_PREFIX.length
 var INC_1_SUFFIX_L = INC_1_SUFFIX.length
 var INC_1_ABS_MIN = INC_1_PREFIX_L + INC_1_SUFFIX_L
 
-var includerTransform = new stream.Transform({
-  transform: function (chunk, encoding, callback) {
-    
-  }
-})
+// INC 2
+// <!-- ##include('PATH_TO_FILE')## -->
+
+var INC_2_PREFIX = Buffer.from('<!-- ##include(\'')
+var INC_2_SUFFIX = Buffer.from('\')## -->')
+
+var INC_2_PREFIX_L = INC_2_PREFIX.length
+var INC_2_SUFFIX_L = INC_2_SUFFIX.length
+var INC_2_ABS_MIN = INC_2_PREFIX_L + INC_2_SUFFIX_L
 
 function includer (input, output, options) {
   var inStream, outStream
@@ -52,18 +47,10 @@ function includer (input, output, options) {
   inStream = fs.createReadStream(input)
   // outStream = fs.createWriteStream(output)
 
-  inStream.on('error', function (error) {
-    console.log('inStream ERROR', error)
-  })
-  inStream.on('end', function (arg) {
-    console.log('inStream end', arg)
-  })
-  inStream.on('close', function (arg) {
-    console.log('inStream close', arg)
-  })
-  inStream.on('data', function (data) {
-    console.log('inStream data', data.length)
-  })
+  inStream.on('error', onInError)
+  inStream.on('end', onInEnd)
+  inStream.on('close', onInClose)
+  inStream.on('readable', onInReadable)
 
   // inStream.on('error', onInError)
   // inStream.on('end', onInEnd)
@@ -80,15 +67,50 @@ function includer (input, output, options) {
   }
 
   function onInEnd () {
-    _log('In end')
+    console.log('In stream end')
 
     endReached = true
   }
 
-  function onInReadable () {
-    _log('In readable')
+  function onInClose () {
+    console.log('In stream close')
+  }
 
-    readChunk()
+  function onInReadable () {
+    console.log('In stream readable')
+    var chunk
+    while ((chunk = inStream.read()) !== null) {
+      console.log('read chunk', chunk.length)
+    }
+
+    // setTimeout(function () {
+    //   console.log('read after timeout')
+    //   var data = inStream.read()
+    //   if (data) {
+    //     console.log(
+    //       'inStream data',
+    //       data.length,
+    //       data.toString('utf8', 0, 10),
+    //       data.toString('utf8', data.length - 10)
+    //     )
+    //   } else {
+    //     console.log('read', data, typeof data)
+    //   }
+    // }, 2000)
+
+    // var data = inStream.read()
+    // if (data) {
+    //   console.log(
+    //     'inStream data',
+    //     data.length,
+    //     data.toString('utf8', 0, 10),
+    //     data.toString('utf8', data.length - 10)
+    //   )
+    // } else {
+    //   console.log('read', data, typeof data)
+    // }
+
+    // readChunk()
   }
 
   function onOutError (error) {
