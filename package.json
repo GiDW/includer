@@ -19,11 +19,11 @@
     "text"
   ],
   "dependencies": {
-    "commander": "9.2.0"
+    "commander": "9.3.0"
   },
   "devDependencies": {
     "@gidw/eslint-config-standard-node": "1.0.3",
-    "eslint": "^8.15.0",
+    "eslint": "^8.16.0",
     "eslint-plugin-import": "^2.26.0",
     "eslint-plugin-node": "^11.1.0"
   },
