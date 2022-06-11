@@ -24,8 +24,10 @@
   "devDependencies": {
     "@gidw/eslint-config-standard-node": "1.0.3",
     "eslint": "^8.16.0",
+    "eslint-config-prettier": "^8.5.0",
     "eslint-plugin-import": "^2.26.0",
-    "eslint-plugin-node": "^11.1.0"
+    "eslint-plugin-node": "^11.1.0",
+    "prettier": "^2.6.2"
   },
   "repository": "github:GiDW/includer.git",
   "bugs": {
