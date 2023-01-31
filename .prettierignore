@@ -356,5 +356,4 @@ $RECYCLE.BIN/
 
 # End of https://www.toptal.com/developers/gitignore/api/node,linux,macos,windows,webstorm,visualstudiocode
 
-test
-test.js
+test_data/
